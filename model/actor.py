@@ -16,14 +16,14 @@ class Actor:
         return self.id == other.id
 
     def __str__(self):
-        return f"{self.name} ({self.date_of_birth})"
+        return f"{self.name}"
 
 
-    def age(self):
-        today = datetime.date.today()
-        age = today.year - self.date_of_birth.year
-
-        # Se non è ancora arrivato il suo compleanno tolgo 1 anno
-        if (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day):
-            age -= 1
-        return age
+    # def age(self):
+    #     today = datetime.date.today()
+    #     age = today.year - self.date_of_birth.year
+    #
+    #     # Se non è ancora arrivato il suo compleanno tolgo 1 anno
+    #     if (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day):
+    #         age -= 1
+    #     return age

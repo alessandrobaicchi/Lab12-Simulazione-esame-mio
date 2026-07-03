@@ -22,11 +22,14 @@ class DAO():
 
         cursor.execute(query)
 
+        # for row in cursor:
+        #     # Faccio un controllo extra nel caso i cui avg_rating fosse NULL nel DB
+        #     val = row["avg_rating"]
+        #     if val is not None:
+        #         results.append(float(val))      # Qui faccio la conversione da Decimal a float
+
         for row in cursor:
-            # Faccio un controllo extra nel caso i cui avg_rating fosse NULL nel DB
-            val = row["avg_rating"]
-            if val is not None:
-                results.append(float(val))      # Qui faccio la conversione da Decimal a float
+            results.append(row["avg_rating"])
 
         cursor.close()
         conn.close()
@@ -45,15 +48,13 @@ class DAO():
 
         cursor = conn.cursor(dictionary=True)
         query = ("""
-                    select n.id, n.name, n.date_of_birth  
+                    select distinct n.id, n.name, n.date_of_birth  
                     from names n, role_mapping rm, movie m, ratings r  
                     where r.movie_id = m.id and m.id = rm.movie_id and rm.name_id = n.id 
-                    and r.avg_rating BETWEEN %s AND %s
-                    AND rm.category IN ('actor', 'actress')
+                    and r.avg_rating BETWEEN %s AND %s              
                     AND n.date_of_birth IS NOT NULL
-                    AND YEAR(n.date_of_birth) >= 1900
-                    AND YEAR(n.date_of_birth) <= YEAR(CURDATE())
                 """)
+        # NOTA. BETWEEN INCLUDE gli estremi!
 
         cursor.execute(query, (startRange, endRange))
 
@@ -69,8 +70,7 @@ class DAO():
 
 
     # ===================================== Crea Grafo (Archi) ==============================================
-    '''Attenzione. Il risultato non è filtrato nè per il range dei voti
-        e nè sul controllo delle date di nascita degli attori. I controlli si fanno nel Model.'''
+    '''Attenzione. Il risultato è già filtrato! '''
     @staticmethod
     def getEdges(startRange, endRange):
         conn = DBConnect.get_connection()
@@ -79,50 +79,30 @@ class DAO():
 
         cursor = conn.cursor(dictionary=True)
         query = ("""
-                 SELECT rm1.name_id AS actor1, rm2.name_id AS actor2, m.worlwide_gross_income AS income
-                 FROM role_mapping rm1
-                          JOIN role_mapping rm2 ON rm1.movie_id = rm2.movie_id
-                          JOIN movie m ON m.id = rm1.movie_id
-                          JOIN ratings r ON r.movie_id = m.id
-                 WHERE rm1.name_id < rm2.name_id
-                   AND r.avg_rating BETWEEN %s AND %s
-                   AND rm1.name_id IN (SELECT n.id
-                                       FROM names n
-                                                JOIN role_mapping rm ON rm.name_id = n.id
-                                                JOIN movie m2 ON m2.id = rm.movie_id
-                                                JOIN ratings r2 ON r2.movie_id = m2.id
-                                       WHERE r2.avg_rating BETWEEN %s AND %s
-                                                 AND rm.category IN ('actor', 'actress')
-                                                 AND n.date_of_birth IS NOT NULL
-                                                 AND YEAR (
-                     n.date_of_birth) BETWEEN 1900
-                   AND YEAR (CURDATE())
-                     )
-                   AND rm2.name_id IN (
-                 SELECT n.id
-                 FROM names n
-                     JOIN role_mapping rm
-                 ON rm.name_id = n.id
-                     JOIN movie m2 ON m2.id = rm.movie_id
-                     JOIN ratings r2 ON r2.movie_id = m2.id
-                 WHERE r2.avg_rating BETWEEN %s
-                   AND %s
-                   AND rm.category IN ('actor'
-                     , 'actress')
-                   AND n.date_of_birth IS NOT NULL
-                   AND YEAR (n.date_of_birth) BETWEEN 1900
-                   AND YEAR (CURDATE())
-                     )
+                 SELECT rm1.name_id AS actor1, rm2.name_id AS actor2, 
+                    sum( cast(replace(replace(m.worlwide_gross_income, '$', ''),',', '') as unsigned)) as Weight
+                    FROM movie m, role_mapping rm1, role_mapping rm2, ratings r, 
+                    names n1, names n2 
+                    WHERE m.id = rm1.movie_id
+                    and m.id = rm2.movie_id
+                    and m.id = r.movie_id
+                    and rm1.name_id = n1.id
+                    and rm2.name_id = n2.id
+                    and n1.date_of_birth IS NOT NULL
+                    and n2.date_of_birth IS NOT null
+                    and rm1.name_id < rm2.name_id
+                    and r.avg_rating >= %s
+                    and r.avg_rating <= %s
+                    and m.worlwide_gross_income is not null 
+                    and m.worlwide_gross_income like '$%'
+                    group by rm1.name_id, rm2.name_id
+
                  """)
 
-        cursor.execute(query, (
-            startRange, endRange,
-            startRange, endRange,
-            startRange, endRange
-        ))
+        cursor.execute(query, (startRange, endRange))
 
         for row in cursor:
-            results.append((row["actor1"], row["actor2"], row["income"]))
+            results.append((row["actor1"], row["actor2"], row["Weight"]))
             # Potrei anche creare un DTO ad hoc...
 
         cursor.close()
