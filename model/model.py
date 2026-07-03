@@ -24,15 +24,13 @@ class Model:
         self._idMapActors = {a.id: a for a in self._actors}
 
         # Archi
-        edgesGross = DAO.getEdges()     # Sono potenziali archi
+        edgesGross = DAO.getEdges(startRange, endRange)     # Sono potenziali archi
 
         # Dizionario per sommare gli incassi dei film in comune
         edgesSum = {}
 
         # Accesso alle tuple di edgesGross in modo "Pythonico"
         for actor1, actor2, income in edgesGross:
-            # Verifico che entrambi gli attori siano attori validi (cioè che siano nodi del grafo)
-            if actor1 in self._idMapActors and actor2 in self._idMapActors:
                 # "Ripulisco" l'incasso del film che hanno in comune (income delle tuple di edgeGross)"
                 incasso = self._cleanIncome(income)
 

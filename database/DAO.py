@@ -72,24 +72,54 @@ class DAO():
     '''Attenzione. Il risultato non è filtrato nè per il range dei voti
         e nè sul controllo delle date di nascita degli attori. I controlli si fanno nel Model.'''
     @staticmethod
-    def getEdges():
+    def getEdges(startRange, endRange):
         conn = DBConnect.get_connection()
 
         results = []
 
         cursor = conn.cursor(dictionary=True)
         query = ("""
-                    SELECT rm1.name_id as actor1, rm2.name_id as actor2, m.worlwide_gross_income as income 
-                    FROM role_mapping rm1,role_mapping rm2, movie m
-                    WHERE 
-                        rm1.movie_id = rm2.movie_id 
-                        and m.id = rm1.movie_id
-                        and rm1.name_id < rm2.name_id
-                        AND rm1.category IN ('actor','actress')
-                        AND rm2.category IN ('actor','actress')
-                """)
+                 SELECT rm1.name_id AS actor1, rm2.name_id AS actor2, m.worlwide_gross_income AS income
+                 FROM role_mapping rm1
+                          JOIN role_mapping rm2 ON rm1.movie_id = rm2.movie_id
+                          JOIN movie m ON m.id = rm1.movie_id
+                          JOIN ratings r ON r.movie_id = m.id
+                 WHERE rm1.name_id < rm2.name_id
+                   AND r.avg_rating BETWEEN %s AND %s
+                   AND rm1.name_id IN (SELECT n.id
+                                       FROM names n
+                                                JOIN role_mapping rm ON rm.name_id = n.id
+                                                JOIN movie m2 ON m2.id = rm.movie_id
+                                                JOIN ratings r2 ON r2.movie_id = m2.id
+                                       WHERE r2.avg_rating BETWEEN %s AND %s
+                                                 AND rm.category IN ('actor', 'actress')
+                                                 AND n.date_of_birth IS NOT NULL
+                                                 AND YEAR (
+                     n.date_of_birth) BETWEEN 1900
+                   AND YEAR (CURDATE())
+                     )
+                   AND rm2.name_id IN (
+                 SELECT n.id
+                 FROM names n
+                     JOIN role_mapping rm
+                 ON rm.name_id = n.id
+                     JOIN movie m2 ON m2.id = rm.movie_id
+                     JOIN ratings r2 ON r2.movie_id = m2.id
+                 WHERE r2.avg_rating BETWEEN %s
+                   AND %s
+                   AND rm.category IN ('actor'
+                     , 'actress')
+                   AND n.date_of_birth IS NOT NULL
+                   AND YEAR (n.date_of_birth) BETWEEN 1900
+                   AND YEAR (CURDATE())
+                     )
+                 """)
 
-        cursor.execute(query)
+        cursor.execute(query, (
+            startRange, endRange,
+            startRange, endRange,
+            startRange, endRange
+        ))
 
         for row in cursor:
             results.append((row["actor1"], row["actor2"], row["income"]))
@@ -97,6 +127,7 @@ class DAO():
 
         cursor.close()
         conn.close()
+
         return results
 
     # =================================================================================================
