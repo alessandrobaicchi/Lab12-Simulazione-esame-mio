@@ -48,4 +48,12 @@ class Controller:
     # --------------------------------------------------------------------------------------------------
 
     def handleCammino(self, e):
-        pass
+        bestPath = self._model.getBestPath()
+
+        self._view.txt_result.controls.clear()
+
+        self._view.txt_result.controls.append(ft.Text("A seguire il cammino semplice di lunghezza massima."))
+        for a in bestPath:
+            self._view.txt_result.controls.append(ft.Text(a))
+
+        self._view.update_page()

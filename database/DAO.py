@@ -46,7 +46,6 @@ class DAO():
 
         results = []
 
-        cursor = conn.cursor(dictionary=True)
         query = ("""
                     select distinct n.id, n.name, n.date_of_birth  
                     from names n, role_mapping rm, movie m, ratings r  
@@ -54,6 +53,7 @@ class DAO():
                     and r.avg_rating BETWEEN %s AND %s              
                     AND n.date_of_birth IS NOT NULL
                 """)
+        cursor = conn.cursor(dictionary=True)
         # NOTA. BETWEEN INCLUDE gli estremi!
 
         cursor.execute(query, (startRange, endRange))
