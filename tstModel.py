@@ -75,3 +75,25 @@ for cammino in allPath:
 #         print(f"Cammino {i}: " + " -> ".join(a.name for a in cammino))
 #
 # ===========================================================================================
+
+# ========================= APPUNTI: perché usare list(_grafo.nodes()) =========================
+#
+# _grafo.nodes() restituisce un oggetto NodeView, NON una lista.
+# NodeView:
+#   - è iterabile
+#   - è dinamico (si aggiorna se il grafo cambia)
+#   - NON supporta indexing (actors[0] dà errore)
+#   - NON è un generator, ma non è nemmeno una lista "comoda"
+#
+# Per lavorare nel testModel, voglio una LISTA vera:
+#
+#     actors = list(mymodel._grafo.nodes())
+#
+# Così posso:
+#   - accedere per indice (actors[0], actors[5], ...)
+#   - stampare facilmente
+#   - iterare più volte senza che cambi
+#   - avere una copia stabile dei nodi
+#
+# ==============================================================================================
+
